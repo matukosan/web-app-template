@@ -94,9 +94,18 @@ jobs:
       - name: Verify Scaleway CLI authentication
         run: |
           echo "Verifying Scaleway CLI authentication..."
+          
+          # Debug environment variables (without exposing secrets)
+          echo "Environment variables check:"
+          echo "  SCW_ACCESS_KEY: ${SCW_ACCESS_KEY:+SET}" 
+          echo "  SCW_SECRET_KEY: ${SCW_SECRET_KEY:+SET}"
+          echo "  SCW_DEFAULT_ORGANIZATION_ID: ${SCW_DEFAULT_ORGANIZATION_ID:+SET}"
+          echo "  SCW_DEFAULT_PROJECT_ID: ${SCW_DEFAULT_PROJECT_ID:+SET}"
+          echo "  SCW_DEFAULT_REGION: $SCW_DEFAULT_REGION"
+          echo "  SCW_DEFAULT_ZONE: $SCW_DEFAULT_ZONE"
 
-          # Test authentication by getting account info
-          if scw account project list --output json > /dev/null 2>&1; then
+          # Test authentication by listing projects
+          if scw project list --output json > /dev/null 2>&1; then
             echo "✅ Scaleway CLI authenticated successfully"
             
             # Show current configuration for debugging
@@ -107,11 +116,17 @@ jobs:
             echo "  Project ID: $(scw config get default-project-id)"
           else
             echo "❌ Scaleway CLI authentication failed"
+            echo "Attempting to show detailed error..."
+            scw project list --output json 2>&1 || true
+            echo ""
             echo "Please check that the following secrets are correctly set in GitHub:"
             echo "  - SCW_ACCESS_KEY"
-            echo "  - SCW_SECRET_KEY"
+            echo "  - SCW_SECRET_KEY" 
             echo "  - SCW_DEFAULT_ORGANIZATION_ID"
             echo "  - SCW_DEFAULT_PROJECT_ID"
+            echo ""
+            echo "Make sure these are set as repository secrets (not environment secrets)"
+            echo "Go to: Settings → Secrets and variables → Actions → Repository secrets"
             exit 1
           fi
 
