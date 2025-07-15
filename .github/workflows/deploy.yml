@@ -12,7 +12,7 @@ on:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'PROD'
+        default: 'prod'
 
 jobs:
   deploy:
@@ -94,7 +94,7 @@ jobs:
       - name: Verify Scaleway CLI authentication
         run: |
           echo "Verifying Scaleway CLI authentication..."
-          
+
           # Test authentication by getting account info
           if scw account project list --output json > /dev/null 2>&1; then
             echo "✅ Scaleway CLI authenticated successfully"
