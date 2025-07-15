@@ -91,6 +91,30 @@ jobs:
           scw config set default-region=${{ env.SCW_DEFAULT_REGION }}
           scw config set default-zone=${{ env.SCW_DEFAULT_ZONE }}
 
+      - name: Verify Scaleway CLI authentication
+        run: |
+          echo "Verifying Scaleway CLI authentication..."
+          
+          # Test authentication by getting account info
+          if scw account project list --output json > /dev/null 2>&1; then
+            echo "✅ Scaleway CLI authenticated successfully"
+            
+            # Show current configuration for debugging
+            echo "Current configuration:"
+            echo "  Region: $(scw config get default-region)"
+            echo "  Zone: $(scw config get default-zone)"
+            echo "  Organization ID: $(scw config get default-organization-id)"
+            echo "  Project ID: $(scw config get default-project-id)"
+          else
+            echo "❌ Scaleway CLI authentication failed"
+            echo "Please check that the following secrets are correctly set in GitHub:"
+            echo "  - SCW_ACCESS_KEY"
+            echo "  - SCW_SECRET_KEY"
+            echo "  - SCW_DEFAULT_ORGANIZATION_ID"
+            echo "  - SCW_DEFAULT_PROJECT_ID"
+            exit 1
+          fi
+
       - name: Create registry namespace if not exists
         run: |
           echo "Checking for registry namespace: ${{ env.CONTAINER_NAMESPACE }}"
