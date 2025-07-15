@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--background: rgba(255, 255, 255, 1);
+		--foreground: rgba(10, 12, 16, 1);
+
+		--muted: rgba(241, 245, 249, 1);
+		--muted-foreground: rgba(100, 116, 139, 1);
+
+		--popover: rgba(255, 255, 255, 1);
+		--popover-foreground: rgba(10, 12, 16, 1);
+
+		--card: rgba(255, 255, 255, 1);
+		--card-foreground: rgba(10, 12, 16, 1);
+
+		--border: rgba(226, 232, 240, 1);
+		--input: rgba(226, 232, 240, 1);
+
+		--primary: rgba(15, 23, 42, 1);
+		--primary-foreground: rgba(241, 245, 249, 1);
+
+		--secondary: rgba(241, 245, 249, 1);
+		--secondary-foreground: rgba(15, 23, 42, 1);
+
+		--accent: rgb(221, 226, 232);
+		--accent-foreground: rgba(15, 23, 42, 1);
+
+		--destructive: rgba(239, 68, 68, 1);
+		--destructive-foreground: rgba(241, 245, 249, 1);
+
+		--ring: rgba(10, 12, 16, 1);
+
+		--radius: 0.5rem;
+	}
+
+	.dark {
+		--background: rgba(10, 12, 16, 1);
+		--foreground: rgba(241, 245, 249, 1);
+
+		--muted: rgba(30, 41, 59, 1);
+		--muted-foreground: rgba(148, 163, 184, 1);
+
+		--popover: rgba(10, 12, 16, 1);
+		--popover-foreground: rgba(241, 245, 249, 1);
+
+		--card: rgba(10, 12, 16, 1);
+		--card-foreground: rgba(241, 245, 249, 1);
+
+		--border: rgba(30, 41, 59, 1);
+		--input: rgba(30, 41, 59, 1);
+
+		--primary: rgba(241, 245, 249, 1);
+		--primary-foreground: rgba(15, 23, 42, 1);
+
+		--secondary: rgba(30, 41, 59, 1);
+		--secondary-foreground: rgba(241, 245, 249, 1);
+
+		--accent: rgba(30, 41, 59, 1);
+		--accent-foreground: rgba(241, 245, 249, 1);
+
+		--destructive: rgba(127, 29, 29, 1);
+		--destructive-foreground: rgba(241, 245, 249, 1);
+
+		--ring: rgba(203, 213, 225, 1);
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+	}
+
+	h1 {
+		@apply text-3xl;
+	}
+
+	.link {
+		@apply text-[#A13EA5] hover:text-[#7E247A] hover:underline;
+	}
+
+	.markdown-styling {
+		ol,
+		ul {
+			@apply flex flex-col gap-2;
+		}
+
+		ul {
+			@apply list-disc list-inside;
+		}
+
+		ol {
+			@apply list-decimal list-inside;
+		}
+
+		table,
+		th,
+		td {
+			@apply table-auto border-collapse border border-gray-300 p-2;
+		}
+
+		a {
+			@apply text-blue-500 underline;
+		}
+
+		li p {
+			@apply inline;
+		}
+	}
+}

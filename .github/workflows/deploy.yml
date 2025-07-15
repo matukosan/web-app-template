@@ -1,0 +1,294 @@
+name: Deploy to Scaleway
+
+on:
+  workflow_run:
+    workflows: ['Database Setup and Migration']
+    types:
+      - completed
+    branches: [main]
+  # Backup trigger for manual deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'PROD'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    environment: ${{ github.event.inputs.environment || 'PROD' }}
+
+    env:
+      SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+      SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+      SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
+      SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_DEFAULT_PROJECT_ID }}
+      SCW_DEFAULT_REGION: ${{ secrets.SCW_DEFAULT_REGION || 'fr-par' }}
+      SCW_DEFAULT_ZONE: ${{ secrets.SCW_DEFAULT_ZONE || 'fr-par-1' }}
+      REGISTRY_ENDPOINT: ${{ secrets.REGISTRY_ENDPOINT || 'rg.fr-par.scw.cloud' }}
+      CONTAINER_NAMESPACE: ${{ secrets.CONTAINER_NAMESPACE || 'web-app-template' }}
+      CONTAINER_NAME: ${{ secrets.CONTAINER_NAME || 'web-app-template' }}
+
+    steps:
+      - name: Debug workflow trigger
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Workflow run status: ${{ github.event.workflow_run.status }}"
+          echo "Workflow run name: ${{ github.event.workflow_run.name }}"
+          echo "Branch: ${{ github.event.workflow_run.head_branch }}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache Scaleway CLI
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/bin/scw
+          key: ${{ runner.os }}-scw-cli
+
+      - name: Install dependencies
+        run: |
+          npm ci --legacy-peer-deps
+          npm audit fix --force || true
+
+      - name: Setup Scaleway CLI
+        id: setup_scw
+        continue-on-error: true
+        uses: scaleway/action-scw@v0
+        with:
+          access-key: ${{ env.SCW_ACCESS_KEY }}
+          secret-key: ${{ env.SCW_SECRET_KEY }}
+          default-organization-id: ${{ env.SCW_DEFAULT_ORGANIZATION_ID }}
+          default-project-id: ${{ env.SCW_DEFAULT_PROJECT_ID }}
+          default-region: ${{ env.SCW_DEFAULT_REGION }}
+          default-zone: ${{ env.SCW_DEFAULT_ZONE }}
+
+      - name: Retry Scaleway CLI setup if rate limited
+        if: steps.setup_scw.outcome == 'failure'
+        run: |
+          echo "Scaleway CLI setup failed, likely due to rate limiting. Waiting 30 seconds before retry..."
+          sleep 30
+
+          # Manual installation as fallback
+          curl -o /tmp/scw -L "https://github.com/scaleway/scaleway-cli/releases/latest/download/scaleway-cli_linux_amd64"
+          chmod +x /tmp/scw
+          sudo mv /tmp/scw /usr/local/bin/scw
+
+          # Configure CLI
+          scw config set access-key=${{ env.SCW_ACCESS_KEY }}
+          scw config set secret-key=${{ env.SCW_SECRET_KEY }}
+          scw config set default-organization-id=${{ env.SCW_DEFAULT_ORGANIZATION_ID }}
+          scw config set default-project-id=${{ env.SCW_DEFAULT_PROJECT_ID }}
+          scw config set default-region=${{ env.SCW_DEFAULT_REGION }}
+          scw config set default-zone=${{ env.SCW_DEFAULT_ZONE }}
+
+      - name: Create registry namespace if not exists
+        run: |
+          echo "Checking for registry namespace: ${{ env.CONTAINER_NAMESPACE }}"
+
+          # List all registry namespaces to debug
+          echo "Listing existing registry namespaces:"
+          scw registry namespace list --output json | jq -r '.[] | .name' || echo "No registry namespaces found or failed to list"
+
+          # Check if registry namespace exists
+          REGISTRY_EXISTS=$(scw registry namespace list --output json | jq -e '.[] | select(.name == "${{ env.CONTAINER_NAMESPACE }}")' > /dev/null 2>&1 && echo "true" || echo "false")
+          echo "Registry namespace exists: $REGISTRY_EXISTS"
+
+          if [ "$REGISTRY_EXISTS" = "false" ]; then
+            echo "Creating registry namespace: ${{ env.CONTAINER_NAMESPACE }}"
+            scw registry namespace create name=${{ env.CONTAINER_NAMESPACE }} --output json
+            echo "✅ Registry namespace created successfully"
+            
+            # Wait a moment for propagation
+            sleep 2
+            
+            # Verify creation
+            if scw registry namespace list --output json | jq -e '.[] | select(.name == "${{ env.CONTAINER_NAMESPACE }}")' > /dev/null 2>&1; then
+              echo "✅ Registry namespace creation verified"
+            else
+              echo "❌ Registry namespace creation failed or not yet propagated"
+              exit 1
+            fi
+          else
+            echo "✅ Registry namespace already exists: ${{ env.CONTAINER_NAMESPACE }}"
+          fi
+
+      - name: Create container namespace if not exists
+        run: |
+          echo "Checking for container namespace: ${{ env.CONTAINER_NAMESPACE }}"
+          # Create container namespace for serverless containers
+          if ! scw container namespace list name=${{ env.CONTAINER_NAMESPACE }} --output json | jq -e '.[] | select(.name == "${{ env.CONTAINER_NAMESPACE }}")' > /dev/null 2>&1; then
+            echo "Creating container namespace: ${{ env.CONTAINER_NAMESPACE }}"
+            scw container namespace create name=${{ env.CONTAINER_NAMESPACE }} --output json
+            echo "Container namespace created successfully"
+          else
+            echo "Container namespace already exists: ${{ env.CONTAINER_NAMESPACE }}"
+          fi
+
+      - name: Debug registry info
+        run: |
+          echo "========================================="
+          echo "Registry Configuration:"
+          echo "  Registry endpoint: ${{ env.REGISTRY_ENDPOINT }}"
+          echo "  Container namespace: ${{ env.CONTAINER_NAMESPACE }}"
+          echo "  Container name: ${{ env.CONTAINER_NAME }}"
+          echo "========================================="
+          echo ""
+          echo "Registry Namespaces:"
+          scw registry namespace list --output json | jq -r '.[] | "  - \(.name) (ID: \(.id))"' || echo "  No registry namespaces found"
+          echo ""
+          echo "Container Namespaces:"
+          scw container namespace list --output json | jq -r '.[] | "  - \(.name) (ID: \(.id))"' || echo "  No container namespaces found"
+          echo "========================================="
+
+      - name: Login to Scaleway Container Registry
+        run: |
+          echo "Logging in to registry..."
+          echo ${{ env.SCW_SECRET_KEY }} | docker login ${{ env.REGISTRY_ENDPOINT }} -u nologin --password-stdin
+          echo "Login successful"
+
+      - name: Get namespace IDs
+        id: get_namespace
+        run: |
+          REGISTRY_NAMESPACE_ID=$(scw registry namespace list --output json | jq -r '.[] | select(.name == "${{ env.CONTAINER_NAMESPACE }}") | .id')
+          CONTAINER_NAMESPACE_ID=$(scw container namespace list name=${{ env.CONTAINER_NAMESPACE }} --output json | jq -r '.[0].id')
+          echo "registry_namespace_id=$REGISTRY_NAMESPACE_ID" >> $GITHUB_OUTPUT
+          echo "container_namespace_id=$CONTAINER_NAMESPACE_ID" >> $GITHUB_OUTPUT
+          echo "Found registry namespace ID: $REGISTRY_NAMESPACE_ID"
+          echo "Found container namespace ID: $CONTAINER_NAMESPACE_ID"
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_TAG=${{ env.REGISTRY_ENDPOINT }}/${{ env.CONTAINER_NAMESPACE }}/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+          IMAGE_LATEST=${{ env.REGISTRY_ENDPOINT }}/${{ env.CONTAINER_NAMESPACE }}/${{ env.CONTAINER_NAME }}:latest
+
+          echo "Building image with tags:"
+          echo "  $IMAGE_TAG"
+          echo "  $IMAGE_LATEST"
+
+          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
+
+          echo "Pushing image: $IMAGE_TAG"
+          if ! docker push $IMAGE_TAG; then
+            echo "❌ Docker push failed. This is likely a Scaleway Container Registry permissions issue."
+            echo "Please check the following:"
+            echo "1. Your SCW credentials have ContainerRegistryFullAccess permissions"
+            echo "2. The namespace '${{ env.CONTAINER_NAMESPACE }}' exists and you have write access"
+            echo "3. Your SCW project has Container Registry enabled"
+            echo ""
+            echo "For now, we'll save the image locally and provide instructions for manual push:"
+            docker save $IMAGE_TAG > app-image.tar
+            echo "Image saved to app-image.tar (this would need manual upload)"
+            echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+            echo "IMAGE_LATEST=$IMAGE_LATEST" >> $GITHUB_ENV
+            echo "PUSH_FAILED=true" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "Pushing image: $IMAGE_LATEST"
+          docker push $IMAGE_LATEST
+
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE_LATEST=$IMAGE_LATEST" >> $GITHUB_ENV
+
+      - name: Check if container exists
+        id: check_container
+        if: env.PUSH_FAILED != 'true'
+        run: |
+          if scw container container list name=${{ env.CONTAINER_NAME }} --output json | jq -e '.[] | select(.name == "${{ env.CONTAINER_NAME }}")' > /dev/null 2>&1; then
+            echo "container_exists=true" >> $GITHUB_OUTPUT
+            CONTAINER_ID=$(scw container container list name=${{ env.CONTAINER_NAME }} --output json | jq -r '.[] | select(.name == "${{ env.CONTAINER_NAME }}") | .id')
+            echo "container_id=$CONTAINER_ID" >> $GITHUB_OUTPUT
+          else
+            echo "container_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create container if not exists
+        if: steps.check_container.outputs.container_exists == 'false' && env.PUSH_FAILED != 'true'
+        run: |
+          scw container container create \
+            name=${{ env.CONTAINER_NAME }} \
+            namespace-id=$(scw container namespace list name=${{ env.CONTAINER_NAMESPACE }} --output json | jq -r '.[0].id') \
+            registry-image=${{ env.IMAGE_LATEST }} \
+            port=3000 \
+            cpu-limit=1000 \
+            memory-limit=1024 \
+            min-scale=0 \
+            max-scale=5 \
+            timeout=300s \
+            privacy=public \
+            protocol=http1 \
+            --output json | jq -r '.id' > container_id.txt
+
+          CONTAINER_ID=$(cat container_id.txt)
+          echo "Created container with ID: $CONTAINER_ID"
+
+          # Deploy the container
+          scw container container deploy $CONTAINER_ID
+          echo "Container deployed successfully"
+
+      - name: Update existing container
+        if: steps.check_container.outputs.container_exists == 'true' && env.PUSH_FAILED != 'true'
+        run: |
+          CONTAINER_ID=${{ steps.check_container.outputs.container_id }}
+          echo "Updating existing container: $CONTAINER_ID"
+
+          # Update the container with new image and environment variables
+          scw container container update $CONTAINER_ID \
+            registry-image=${{ env.IMAGE_LATEST }}
+
+          # Deploy the updated container
+          scw container container deploy $CONTAINER_ID
+          echo "Container updated and deployed successfully"
+
+      - name: Get container URL
+        run: |
+          CONTAINER_ID=${{ steps.check_container.outputs.container_id }}
+          if [ -z "$CONTAINER_ID" ]; then
+            CONTAINER_ID=$(scw container container list name=${{ env.CONTAINER_NAME }} --output json | jq -r '.[] | select(.name == "${{ env.CONTAINER_NAME }}") | .id')
+          fi
+
+          CONTAINER_URL=$(scw container container get $CONTAINER_ID --output json | jq -r '.domain_name')
+          echo "🚀 Container deployed at: https://$CONTAINER_URL"
+
+      - name: Registry push failed - next steps
+        if: env.PUSH_FAILED == 'true'
+        run: |
+          echo "🛠️ Registry Push Failed - Manual Setup Required"
+          echo "================================================="
+          echo ""
+          echo "The Docker image was built successfully but couldn't be pushed to Scaleway Container Registry."
+          echo ""
+          echo "To fix this issue, please:"
+          echo "1. Go to Scaleway Console → IAM → API Keys"
+          echo "2. Check that your API key has these permissions:"
+          echo "   - ContainerRegistryFullAccess (or ContainerRegistryReadWrite)"
+          echo "   - ContainerNamespaceFullAccess"
+          echo "   - ServerlessContainerFullAccess"
+          echo ""
+          echo "3. Verify the Container Registry namespace exists:"
+          echo "   - Go to Container Registry → Namespaces"
+          echo "   - Create namespace '${{ env.CONTAINER_NAMESPACE }}' if it doesn't exist"
+          echo ""
+          echo "4. Re-run this workflow after fixing permissions"
+          echo ""
+          echo "Image details:"
+          echo "  Registry: ${{ env.REGISTRY_ENDPOINT }}"
+          echo "  Namespace: ${{ env.CONTAINER_NAMESPACE }}"
+          echo "  Image: ${{ env.CONTAINER_NAME }}"
+
+      - name: Deployment summary
+        if: env.PUSH_FAILED != 'true'
+        run: |
+          echo "✅ Deployment completed successfully"
+          echo "Environment: ${{ github.event.workflow_run.head_branch }}"
+          echo "Commit: ${{ github.sha }}"

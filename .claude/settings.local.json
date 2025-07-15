@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npm create:*)",
+      "Bash(npx sv create:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(node:*)",
+      "Bash(lsof:*)",
+      "Bash(diff:*)",
+      "Bash(ls:*)",
+      "Bash(brew install:*)",
+      "Bash(brew list:*)",
+      "Bash(grep:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:tkdkid1000.github.io)",
+      "Bash(npm info:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:serper.dev)",
+      "Bash(npm uninstall:*)",
+      "Bash(rg:*)",
+      "Bash(npm:*)",
+      "Bash(test:*)",
+      "Bash(timeout 5 npm run dev 2 >& 1)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx cap add:*)",
+      "Bash(npx cap sync:*)"
+    ],
+    "deny": []
+  }
+}

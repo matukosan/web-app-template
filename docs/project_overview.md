@@ -1,0 +1,1 @@
+This document should describe what the project is about and its functionality.
