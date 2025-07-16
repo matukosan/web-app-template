@@ -57,7 +57,7 @@ jobs:
       - name: Create database if not exists
         if: steps.check_db.outputs.db_exists == 'false'
         run: |
-          psql -h ${{ env.DATABASE_HOST }} -p ${{ env.DATABASE_PORT }} -U postgres -d postgres -c "CREATE DATABASE \"${{ env.DATABASE_DATABASE }}\";"
+          psql -h ${{ env.DATABASE_HOST }} -p ${{ env.DATABASE_PORT }} -U ${{ env.DATABASE_USER }} -d ${{ env.DATABASE_PASSWORD }} -c "CREATE DATABASE \"${{ env.DATABASE_DATABASE }}\";"
           echo "Database ${{ env.DATABASE_DATABASE }} created successfully"
 
       - name: Run Drizzle migrations
