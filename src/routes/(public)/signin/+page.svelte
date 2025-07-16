@@ -28,7 +28,7 @@
 </script>
 
 <div class="w-full h-screen flex flex-col gap-4 items-center justify-center">
-	<h1 class="text-2xl font-bold mb-4">Welcome to App Template!</h1>
+	<h1 class="text-2xl font-bold mb-4">Welcome to App Template 2!</h1>
 
 	{#if data.error}
 		<p class="text-red-500 text-sm mt-4">Invalid login token</p>
