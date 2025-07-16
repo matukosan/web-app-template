@@ -29,6 +29,9 @@ jobs:
       VM_USER: ${{ vars.VM_USER }}
       VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
       LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL || 'hello@matuko.xyz' }}
+      DOMAIN_ROOT: ${{ vars.DOMAIN_ROOT || 'matuko.xyz' }}
+      CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
     steps:
       - name: Debug workflow trigger
@@ -41,6 +44,39 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Ensure Cloudflare DNS A record exists
+        run: |
+          SUBDOMAIN=${{ env.SUBDOMAIN }}
+          DOMAIN=${{ env.DOMAIN_ROOT }}
+          CF_ZONE_ID=${{ env.CF_ZONE_ID }}
+          CF_API_TOKEN=${{ env.CF_API_TOKEN }}
+          VM_IP=${{ env.VM_HOST }}
+
+          RECORD_NAME="${SUBDOMAIN}.${DOMAIN}"
+
+          # Check if the DNS record already exists
+          RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?type=A&name=${RECORD_NAME}" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            | jq -r '.result[0].id')
+
+          if [ "$RECORD_ID" = "null" ]; then
+            echo "Creating new A record for ${RECORD_NAME} → ${VM_IP}"
+            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{
+                "type": "A",
+                "name": "'"${RECORD_NAME}"'",
+                "content": "'"${VM_IP}"'",
+                "ttl": 120,
+                "proxied": false
+              }'
+          else
+            echo "✅ DNS record for ${RECORD_NAME} already exists. Skipping..."
+          fi
+        shell: bash
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
