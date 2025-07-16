@@ -11,3 +11,7 @@ services:
       - proxy
     expose:
       - "3000"
+
+networks:
+  proxy:
+    external: true
