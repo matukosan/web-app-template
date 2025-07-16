@@ -8,10 +8,10 @@ services:
       - LETSENCRYPT_HOST=${VIRTUAL_HOST}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     networks:
-      - proxy
+      - apps_proxy
     expose:
       - "3000"
 
 networks:
-  proxy:
+  apps_proxy:
     external: true
