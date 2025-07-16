@@ -90,7 +90,7 @@ jobs:
           username: ${{ env.VM_USER }}
           key: ${{ env.VM_SSH_KEY }}
           source: docker-compose.yml
-          target: /opt/apps/${{ env.APP_NAME }}/docker-compose.yml
+          target: /opt/apps/${{ env.APP_NAME }}
 
       - name: Deploy container with env vars
         uses: appleboy/ssh-action@v1.0.0

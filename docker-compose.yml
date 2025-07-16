@@ -1,12 +1,12 @@
 services:
-  web-app-template:
-    image: mattposch/web-app-template:main
-    container_name: web-app-template
+  app:
+    image: mattposch/${APP_NAME}:main
+    container_name: ${APP_NAME}
     restart: always
     environment:
-      - VIRTUAL_HOST=web-app-template.matuko.xyz
-      - LETSENCRYPT_HOST=web-app-template.matuko.xyz
-      - LETSENCRYPT_EMAIL=hello@web-app-template.matuko.xyz
+      - VIRTUAL_HOST=${VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${VIRTUAL_HOST}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     networks:
       - proxy
     expose:
