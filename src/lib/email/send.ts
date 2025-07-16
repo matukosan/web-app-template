@@ -1,16 +1,16 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 import { env } from '$env/dynamic/private';
 
 const transporter = nodemailer.createTransport({
-	host: 'smtp.resend.com',
-	port: 465,
-	auth: {
-		user: 'resend',
-		pass: env.RESEND_API_KEY
-	},
-	secure: true,
+	host: env.SMTP_HOST || 'localhost',
+	port: parseInt(env.SMTP_PORT || '587'),
+	auth: env.SMTP_USER && env.SMTP_PASS ? {
+		user: env.SMTP_USER,
+		pass: env.SMTP_PASS
+	} : undefined,
+	secure: env.SMTP_SECURE === 'true',
 	tls: {
-		rejectUnauthorized: false
+		rejectUnauthorized: env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false'
 	},
 	// Timeout configurations to prevent hanging connections
 	connectionTimeout: 10000, // 10 seconds to establish connection

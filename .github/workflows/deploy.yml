@@ -1,4 +1,4 @@
-name: Deploy to Scaleway
+name: Build Docker and Deploy
 
 on:
   workflow_run:
@@ -21,8 +21,14 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'prod' }}
 
     env:
-      CONTAINER_NAMESPACE: ${{ secrets.CONTAINER_NAMESPACE || 'web-app-template' }}
-      CONTAINER_NAME: ${{ secrets.CONTAINER_NAME || 'web-app-template' }}
+      SUBDOMAIN: ${{ vars.SUBDOMAIN || 'web-app-template.matuko.xyz' }}
+      APP_NAME: ${{ vars.APP_NAME || 'web-app-template' }}
+      DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      VM_HOST: ${{ vars.VM_HOST }}
+      VM_USER: ${{ vars.VM_USER }}
+      VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+      LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL || 'hello@matuko.xyz' }}
 
     steps:
       - name: Debug workflow trigger
@@ -50,8 +56,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -67,3 +73,20 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Deploy container with env vars
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ env.VM_SSH_KEY }}
+          script: |
+            mkdir -p /opt/apps/${{ env.APP_NAME }}
+            cd /opt/apps/${{ env.APP_NAME }}
+
+            export VIRTUAL_HOST=${{ env.SUBDOMAIN }}
+            export LETSENCRYPT_HOST=${{ env.SUBDOMAIN }}
+            export LETSENCRYPT_EMAIL=${{ env.LETSENCRYPT_EMAIL }}
+
+            docker compose pull || true
+            docker compose up -d
