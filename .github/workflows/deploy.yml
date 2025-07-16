@@ -21,7 +21,6 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'prod' }}
 
     env:
-      SUBDOMAIN: ${{ vars.SUBDOMAIN || 'web-app-template.matuko.xyz' }}
       APP_NAME: ${{ vars.APP_NAME || 'web-app-template' }}
       DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -47,7 +46,7 @@ jobs:
 
       - name: Ensure Cloudflare DNS A record exists
         run: |
-          SUBDOMAIN=${{ env.SUBDOMAIN }}
+          SUBDOMAIN=${{ env.APP_NAME }}
           DOMAIN=${{ env.DOMAIN_ROOT }}
           CF_ZONE_ID=${{ env.CF_ZONE_ID }}
           CF_API_TOKEN=${{ env.CF_API_TOKEN }}
@@ -137,8 +136,8 @@ jobs:
           script: |
             cd /opt/apps/${{ env.APP_NAME }}
 
-            export VIRTUAL_HOST=${{ env.SUBDOMAIN }}
-            export LETSENCRYPT_HOST=${{ env.SUBDOMAIN }}
+            export VIRTUAL_HOST=${{ env.APP_NAME }}.${{ env.DOMAIN_ROOT }}
+            export LETSENCRYPT_HOST=${{ env.APP_NAME }}.${{ env.DOMAIN_ROOT }}
             export LETSENCRYPT_EMAIL=${{ env.LETSENCRYPT_EMAIL }}
             export APP_NAME=${{ env.APP_NAME }}
 
