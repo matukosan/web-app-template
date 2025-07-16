@@ -1,0 +1,13 @@
+services:
+  web-app-template:
+    image: mattposch/web-app-template:main
+    container_name: web-app-template
+    restart: always
+    environment:
+      - VIRTUAL_HOST=web-app-template.matuko.xyz
+      - LETSENCRYPT_HOST=web-app-template.matuko.xyz
+      - LETSENCRYPT_EMAIL=hello@web-app-template.matuko.xyz
+    networks:
+      - proxy
+    expose:
+      - "3000"

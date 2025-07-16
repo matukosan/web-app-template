@@ -74,7 +74,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Deploy container with env vars
+      - name: Create target folder
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ env.VM_HOST }}
@@ -82,6 +82,23 @@ jobs:
           key: ${{ env.VM_SSH_KEY }}
           script: |
             mkdir -p /opt/apps/${{ env.APP_NAME }}
+
+      - name: Copy docker-compose.yml
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ env.VM_SSH_KEY }}
+          source: docker-compose.yml
+          target: /opt/apps/${{ env.APP_NAME }}/docker-compose.yml
+
+      - name: Deploy container with env vars
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ env.VM_SSH_KEY }}
+          script: |
             cd /opt/apps/${{ env.APP_NAME }}
 
             export VIRTUAL_HOST=${{ env.SUBDOMAIN }}
