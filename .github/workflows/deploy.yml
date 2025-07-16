@@ -32,6 +32,27 @@ jobs:
       CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
       CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
+      DATABASE_HOST: ${{ vars.DATABASE_HOST || 'localhost' }}
+      DATABASE_PORT: ${{ vars.DATABASE_PORT || '5432' }}
+      DATABASE_USER: ${{ vars.DATABASE_USER || 'postgres' }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD || 'postgres' }}
+      DATABASE_DATABASE: ${{ vars.DATABASE_DATABASE || 'app_template' }}
+
+      JWT_SECRET: ${{ secrets.JWT_SECRET || 'changeme' }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'changeme' }}
+
+      ENABLE_SIGNUP: ${{ vars.ENABLE_SIGNUP || 'false' }}
+      SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.postmarkapp.com' }}
+      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS}}
+      SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
+      SMTP_TLS_REJECT_UNAUTHORIZED: ${{ vars.SMTP_TLS_REJECT_UNAUTHORIZED || 'true' }}
+
+      EMAIL_SENDER: ${{ vars.EMAIL_SENDER || 'no-reply@matuko.xyz' }}
+      EMAIL_SENDER_NAME: ${{ vars.EMAIL_SENDER_NAME || 'Web App Template' }}
+      SIGNIN_URL_BASE: ${{ vars.SIGNIN_URL_BASE || 'http://localhost:5173' }}
+
     steps:
       - name: Debug workflow trigger
         run: |
