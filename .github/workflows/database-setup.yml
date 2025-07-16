@@ -7,14 +7,14 @@ on:
 jobs:
   database-setup:
     runs-on: ubuntu-latest
-    environment: prod # Change this to your environment name
+    environment: ${{ github.event.inputs.environment || 'prod' }}
 
     env:
-      DATABASE_HOST: ${{ secrets.DATABASE_HOST || 'localhost' }}
-      DATABASE_PORT: ${{ secrets.DATABASE_PORT || '5432' }}
-      DATABASE_USER: ${{ secrets.DATABASE_USER || 'postgres' }}
+      DATABASE_HOST: ${{ vars.DATABASE_HOST || 'localhost' }}
+      DATABASE_PORT: ${{ vars.DATABASE_PORT || '5432' }}
+      DATABASE_USER: ${{ vars.DATABASE_USER || 'postgres' }}
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD || 'postgres' }}
-      DATABASE_DATABASE: ${{ secrets.DATABASE_DATABASE || 'app_template' }}
+      DATABASE_DATABASE: ${{ vars.DATABASE_DATABASE || 'app_template' }}
       PGPASSWORD: ${{ secrets.DATABASE_PASSWORD || 'postgres' }}
 
     services:
