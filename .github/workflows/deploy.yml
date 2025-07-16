@@ -104,6 +104,7 @@ jobs:
             export VIRTUAL_HOST=${{ env.SUBDOMAIN }}
             export LETSENCRYPT_HOST=${{ env.SUBDOMAIN }}
             export LETSENCRYPT_EMAIL=${{ env.LETSENCRYPT_EMAIL }}
+            export APP_NAME=${{ env.APP_NAME }}
 
             docker compose pull || true
             docker compose up -d
