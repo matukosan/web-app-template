@@ -1,8 +1,18 @@
 import * as postmark from 'postmark';
 import { env } from '$env/dynamic/private';
 
-// Initialize Postmark client
-const client = new postmark.ServerClient(env.POSTMARK_API_TOKEN || '');
+// Global variable for the Postmark client singleton
+let client: postmark.ServerClient | undefined;
+
+/**
+ * Gets or creates the Postmark client singleton
+ */
+function getPostmarkClient(): postmark.ServerClient {
+	if (!client) {
+		client = new postmark.ServerClient(env.POSTMARK_API_TOKEN || '');
+	}
+	return client;
+}
 
 /**
  * Sends an email with retry logic
@@ -12,7 +22,7 @@ async function sendEmailWithRetry(mailOptions: postmark.Message, maxRetries = 3)
 
 	for (let attempt = 1; attempt <= maxRetries; attempt++) {
 		try {
-			const result = await client.sendEmail(mailOptions);
+			const result = await getPostmarkClient().sendEmail(mailOptions);
 			return result;
 		} catch (error) {
 			lastError = error;
