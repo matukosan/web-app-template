@@ -8,7 +8,8 @@ export default defineConfig({
 			name: 'start-up-request',
 			configureServer(server) {
 				server.httpServer?.on('listening', async () => {
-					await fetch('http://localhost:5173').catch((e) => console.error(e));
+					const port = server.config.server?.port || 5173;
+					await fetch(`http://localhost:${port}`).catch((e) => console.error(e));
 				});
 			}
 		}
@@ -17,6 +18,7 @@ export default defineConfig({
 		include: ['src/**/*.{test,spec}.{js,ts}']
 	},
 	server: {
+		port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
 		proxy: {
 			'/socket.io': {
 				target: 'ws://localhost:3000',

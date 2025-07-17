@@ -1,14 +1,24 @@
 import { Server } from 'socket.io';
 import type { Server as HTTPServer } from 'http';
+import { env } from '$env/dynamic/private';
 
 let io: Server;
 
 export const initSocket = (server: HTTPServer) => {
+	const corsConfig =
+		env.NODE_ENV === 'development'
+			? {
+					origin: '*', // Allow any origin in development
+					methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+					credentials: true
+				}
+			: {
+					origin: import.meta.env.VITE_PUBLIC_ORIGIN || 'http://localhost:5173',
+					methods: ['GET', 'POST']
+				};
+
 	io = new Server(server, {
-		cors: {
-			origin: import.meta.env.VITE_PUBLIC_ORIGIN || 'http://localhost:5173',
-			methods: ['GET', 'POST']
-		}
+		cors: corsConfig
 	});
 
 	io.on('connection', (socket) => {
